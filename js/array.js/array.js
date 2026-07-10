@@ -9,7 +9,7 @@ cores.push('roxo' , "ciano");
 console.log(cores );
 
 //["azul" , "amarelo" , "rosa" , "vermelho" , " roxo " , "ciano "];
-//pop() -> Remove elementos do final do vetor 
+//pop()-> Remove  elementos ao final do vetor ;
 
 cores.pop();
 console.log(cores );
@@ -36,3 +36,11 @@ console.log(cores)
 
 cores.splice(2, 0 , "branco" , "cinza");
 
+//sort -> Ordenação Cresente
+cores.sort();
+console.log(cores);
+//[    'amarelo',  'azul',    'branco',   'cinza',    'preto',    'roxo',    'vermelho'  ]
+
+//reverse -> Ordenação Decrecente 
+//[    'amarelo',  'azul',    'branco',   'cinza',    'preto',    'roxo',    'vermelho'  ]
+console.log(cores)
