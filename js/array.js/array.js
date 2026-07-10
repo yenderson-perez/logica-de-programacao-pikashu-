@@ -27,3 +27,12 @@ console.log(cores );
 cores.shift();
 console.log(cores);
 
+//Splice -> Remove  ou Incire elementos em uma posição;
+// [ 0 , 1 , 2 ,  3 , 4 ]
+// [ azul , amarelo , rosa , vermelho , roxo];
+
+cores.splice(3, 1);
+console.log(cores)
+
+cores.splice(2, 0 , "branco" , "cinza");
+
