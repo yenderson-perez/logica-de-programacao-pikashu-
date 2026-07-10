@@ -16,3 +16,8 @@
 
 
 //reverse -> Ordenação Decrecente 
+
+
+
+
+console.log(`🐢`);
