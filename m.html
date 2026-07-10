@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora Interativa</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .calculadora {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 350px;
+            width: 100%;
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .inputs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        input {
+            width: 80px;
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        input:focus {
+            border-color: #007bff;
+        }
+        .botoes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        button {
+            padding: 15px;
+            font-size: 20px;
+            cursor: pointer;
+            border: none;
+            background-color: #007bff;
+            color: white;
+            border-radius: 8px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:active {
+            transform: scale(0.95);
+        }
+        .btn-comparar {
+            background-color: #28a745;
+        }
+        .btn-comparar:hover {
+            background-color: #218838;
+        }
+        .resultado-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #007bff;
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            min-height: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="calculadora">
+        <h2>Calculadora 🧮</h2>
+        
+        <div class="inputs">
+            <input type="number" id="num1" placeholder="Nº 1">
+            <input type="number" id="num2" placeholder="Nº 2">
+        </div>
+
+        <div class="botoes">
+            <button onclick="calcular('+')">➕</button>
+            <button onclick="calcular('-')">➖</button>
+            <button onclick="calcular('*')">✖️</button>
+            <button onclick="calcular('/')">➗</button>
+            <button class="btn-comparar" onclick="calcular('<>')">↔️ ¿?</button>
+        </div>
+
+        <div class="resultado-box" id="resultado">
+            Digite os números e escolha uma operação!
+        </div>
+    </div>
+
+    <script>
+        function calcular(signo) {
+            // Pegamos os valores direto das caixas de texto do HTML
+            let numero1 = Number(document.getElementById('num1').value);
+            let numero2 = Number(document.getElementById('num2').value);
+            let painelResultado = document.getElementById('resultado');
+            let resultado;
+
+            // Se o usuário esquecer de digitar algum número
+            if (document.getElementById('num1').value === "" || document.getElementById('num2').value === "") {
+                painelResultado.innerHTML = "Por favor, digite os dois números! ⚠️";
+                return;
+            }
+
+            // Sua lógica adaptada para a interface gráfica
+            if (signo === "<>") {
+                if (numero1 > numero2) {
+                    painelResultado.innerHTML = `O número <strong>${numero1}</strong> é maior! 🚀`;
+                } else if (numero2 > numero1) { 
+                    painelResultado.innerHTML = `O número <strong>${numero2}</strong> é maior! 🚀`;
+                } else {
+                    painelResultado.innerHTML = "Os dois números são iguais! ⚖️";
+                }
+            } else {
+                if (signo === "+") resultado = numero1 + numero2;
+                else if (signo === "-") resultado = numero1 - numero2;
+                else if (signo === "*") resultado = numero1 * numero2;
+                else if (signo === "/") {
+                    if (numero2 === 0) {
+                        painelResultado.innerHTML = "Não dá para dividir por zero! 🐢";
+                        return;
+                    }
+                    resultado = numero1 / numero2;
+                }
+                
+                // Mostra o resultado final na tela
+                painelResultado.innerHTML = `Resultado: <strong>${resultado}</strong>`;
+            }
+        }
+    </script>
+</body>
+</html>

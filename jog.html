@@ -1,0 +1,384 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Multi-Arcade Engine Unificada</title>
+    <style>
+        * { box-sizing: border-box; user-select: none; }
+        body {
+            background: radial-gradient(circle at center, #0f0f26 0%, #030308 100%);
+            color: #fff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .cabinet {
+            background: #0b0b18;
+            padding: 20px;
+            border-radius: 16px;
+            border: 3px solid #222244;
+            box-shadow: 0 0 40px rgba(0, 242, 254, 0.2);
+        }
+        .screen-area {
+            position: relative;
+            width: 480px;
+            height: 420px;
+        }
+        canvas {
+            background: #010103;
+            border-radius: 6px;
+            border: 2px solid #333366;
+        }
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(4, 4, 10, 0.96);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+        .btn {
+            background: #13132b;
+            color: #00f2fe;
+            border: 2px solid #00f2fe;
+            padding: 12px;
+            margin: 6px;
+            width: 260px;
+            font-weight: bold;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: 0.2s;
+            text-align: center;
+        }
+        .btn:hover {
+            background: #ff007f;
+            border-color: #ff007f;
+            color: #fff;
+            box-shadow: 0 0 10px #ff007f;
+        }
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.8rem;
+            color: #555588;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cabinet">
+        <h2 style="text-align:center; margin:0 0 12px 0; color:#00f2fe; letter-spacing:2px;">OS ARCADE OS</h2>
+        <div class="screen-area">
+            
+            <div id="menu" class="overlay">
+                <h3 style="color:#ffdf00; margin-bottom:15px; letter-spacing: 1px;">SELECT SYSTEM ROM</h3>
+                <button class="btn" onclick="ArcadeCore.boot('snake')">1. SNAKE NEXUS</button>
+                <button class="btn" onclick="ArcadeCore.boot('breakout')">2. NEUTRON BREAKER</button>
+                <button class="btn" onclick="ArcadeCore.boot('invaders')">3. PLASMA INVADERS</button>
+                <button class="btn" onclick="ArcadeCore.boot('runner')">4. CYBER RUNNER</button>
+                <div class="instructions">Setas movem | Espaço atira/pula | ESC volta</div>
+            </div>
+
+            <canvas id="arcCanvas" width="480" height="420"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================================
+        // MODULE CENTRAL: MOTOR GRÁFICO E DE EVENTOS (CORE)
+        // =====================================================================
+        const ArcadeCore = {
+            canvas: null, ctx: null, menu: null,
+            activeGame: null, loopId: null,
+            keys: {}, score: 0, level: 1,
+
+            init() {
+                this.canvas = document.getElementById("arcCanvas");
+                this.ctx = this.canvas.getContext("2d");
+                this.menu = document.getElementById("menu");
+
+                window.addEventListener("keydown", e => { 
+                    this.keys[e.keyCode] = true; 
+                    if([32,37,38,39,40].includes(e.keyCode)) e.preventDefault(); 
+                });
+                window.addEventListener("keyup", e => { this.keys[e.keyCode] = false; });
+            },
+
+            boot(gameKey) {
+                if(!this.canvas) this.init();
+                if(this.loopId) cancelAnimationFrame(this.loopId);
+
+                this.menu.style.display = "none";
+                this.score = 0; this.level = 1; this.keys = {};
+
+                if(gameKey === 'snake') this.activeGame = SnakeModule;
+                if(gameKey === 'breakout') this.activeGame = BreakoutModule;
+                if(gameKey === 'invaders') this.activeGame = InvadersModule;
+                if(gameKey === 'runner') this.activeGame = RunnerModule;
+
+                if(this.activeGame && this.activeGame.init) {
+                    this.activeGame.init();
+                    this.loop();
+                }
+            },
+
+            shutdown(msg) {
+                this.activeGame = null;
+                if(this.loopId) cancelAnimationFrame(this.loopId);
+                alert(`💥 SYSTEM HALT! \n\nScore Final: ${this.score}\nEstágio: ${this.level}\nMotivo: ${msg}`);
+                this.menu.style.display = "flex";
+            },
+
+            loop() {
+                if(!ArcadeCore.activeGame) return;
+
+                // Limpeza e desenho de HUD seguro contra sobreposição
+                ArcadeCore.ctx.fillStyle = "#020205";
+                ArcadeCore.ctx.fillRect(0, 0, ArcadeCore.canvas.width, ArcadeCore.canvas.height);
+                ArcadeCore.ctx.fillStyle = "#222244";
+                ArcadeCore.ctx.fillRect(0, 35, ArcadeCore.canvas.width, 2);
+
+                ArcadeCore.ctx.fillStyle = "#00ff87"; ArcadeCore.ctx.font = "bold 13px monospace";
+                ArcadeCore.ctx.fillText(`SCORE: ${ArcadeCore.score}`, 15, 22);
+                ArcadeCore.ctx.fillText(`STAGE: ${ArcadeCore.level}`, ArcadeCore.canvas.width/2 - 30, 22);
+                ArcadeCore.ctx.fillStyle = "#ff007f";
+                ArcadeCore.ctx.fillText(`ESC: RESET`, ArcadeCore.canvas.width - 95, 22);
+
+                if(ArcadeCore.keys[27]) { ArcadeCore.activeGame = null; ArcadeCore.menu.style.display = "flex"; return; }
+
+                ArcadeCore.activeGame.update();
+                ArcadeCore.loopId = requestAnimationFrame(ArcadeCore.loop);
+            }
+        };
+
+        // =====================================================================
+        // JOGO 1: SNAKE NEXUS
+        // =====================================================================
+        const SnakeModule = {
+            body: [], dir: {x: 1, y: 0}, food: {}, tick: 0, size: 20,
+
+            init() {
+                this.body = [{x: 10, y: 12}, {x: 9, y: 12}];
+                this.dir = {x: 1, y: 0};
+                this.tick = 0;
+                this.spawnFood();
+            },
+            spawnFood() {
+                this.food = {
+                    x: Math.floor(Math.random() * (ArcadeCore.canvas.width / this.size)),
+                    y: Math.floor(Math.random() * ((ArcadeCore.canvas.height - 50) / this.size)) + 3
+                };
+            },
+            update() {
+                this.tick++;
+                if (ArcadeCore.keys[37] && this.dir.x === 0) this.dir = {x: -1, y: 0};
+                if (ArcadeCore.keys[38] && this.dir.y === 0) this.dir = {x: 0, y: -1};
+                if (ArcadeCore.keys[39] && this.dir.x === 0) this.dir = {x: 1, y: 0};
+                if (ArcadeCore.keys[40] && this.dir.y === 0) this.dir = {x: 0, y: 1};
+
+                let speed = Math.max(3, 8 - ArcadeCore.level);
+                if (this.tick % speed === 0) {
+                    let head = {x: this.body[0].x + this.dir.x, y: this.body[0].y + this.dir.y};
+
+                    if (head.x < 0 || head.x >= ArcadeCore.canvas.width/this.size || head.y < 3 || head.y >= ArcadeCore.canvas.height/this.size) {
+                        ArcadeCore.shutdown("Cobra colidiu com a parede externa."); return;
+                    }
+                    for(let p of this.body) {
+                        if(p.x === head.x && p.y === head.y) { ArcadeCore.shutdown("Auto-colisão na cauda."); return; }
+                    }
+
+                    this.body.unshift(head);
+                    if (head.x === this.food.x && head.y === this.food.y) {
+                        ArcadeCore.score += 100;
+                        ArcadeCore.level = Math.floor(ArcadeCore.score / 500) + 1;
+                        this.spawnFood();
+                    } else { this.body.pop(); }
+                }
+
+                let ctx = ArcadeCore.ctx;
+                ctx.fillStyle = "#ff007f"; ctx.fillRect(this.food.x * this.size, this.food.y * this.size, this.size-2, this.size-2);
+                ctx.fillStyle = "#00f2fe"; this.body.forEach(p => ctx.fillRect(p.x * this.size, p.y * this.size, this.size-2, this.size-2));
+            }
+        };
+
+        // =====================================================================
+        // JOGO 2: NEUTRON BREAKER
+        // =====================================================================
+        const BreakoutModule = {
+            padX: 0, padW: 80, ball: {}, bricks: [],
+
+            init() {
+                this.padW = 80;
+                this.padX = ArcadeCore.canvas.width / 2 - this.padW / 2;
+                this.ball = {x: ArcadeCore.canvas.width / 2, y: ArcadeCore.canvas.height - 40, vx: 4, vy: -4, r: 6};
+                this.bricks = [];
+                
+                let rows = Math.min(6, 2 + ArcadeCore.level);
+                for(let r=0; r<rows; r++) {
+                    for(let c=0; c<9; c++) {
+                        this.bricks.push({x: c * 52 + 10, y: r * 18 + 60, w: 46, h: 14, active: true});
+                    }
+                }
+            },
+            update() {
+                if(ArcadeCore.keys[37] && this.padX > 0) this.padX -= 6;
+                if(ArcadeCore.keys[39] && this.padX < ArcadeCore.canvas.width - this.padW) this.padX += 6;
+
+                this.ball.x += this.ball.vx; this.ball.y += this.ball.vy;
+
+                if(this.ball.x - this.ball.r < 0 || this.ball.x + this.ball.r > ArcadeCore.canvas.width) this.ball.vx = -this.ball.vx;
+                if(this.ball.y - this.ball.r < 40) this.ball.vy = -this.ball.vy;
+
+                if(this.ball.y > ArcadeCore.canvas.height) { ArcadeCore.shutdown("Bola perdida no abismo inferior."); return; }
+
+                if(this.ball.y + this.ball.r >= ArcadeCore.canvas.height-20 && this.ball.y - this.ball.r <= canvas.height-10) {
+                    if(this.ball.x > this.padX && this.ball.x < this.padX + this.padW && this.ball.vy > 0) {
+                        this.ball.vy = -this.ball.vy;
+                    }
+                }
+
+                let remaining = 0;
+                this.bricks.forEach(b => {
+                    if(!b.active) return;
+                    remaining++;
+                    if(this.ball.x > b.x && this.ball.x < b.x + b.w && this.ball.y > b.y && this.ball.y < b.y + b.h) {
+                        b.active = false; this.ball.vy = -this.ball.vy; ArcadeCore.score += 50;
+                    }
+                });
+
+                if(remaining === 0) { ArcadeCore.level++; this.init(); }
+
+                let ctx = ArcadeCore.ctx;
+                ctx.fillStyle = "#ffdf00"; ctx.fillRect(this.padX, ArcadeCore.canvas.height-20, this.padW, 10);
+                ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(this.ball.x, this.ball.y, this.ball.r, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#00ff87"; this.bricks.forEach(b => { if(b.active) ctx.fillRect(b.x, b.y, b.w, b.h); });
+            }
+        };
+
+        // =====================================================================
+        // JOGO 3: PLASMA INVADERS
+        // =====================================================================
+        const InvadersModule = {
+            shipX: 0, shots: [], swarm: [], dir: 1, reload: 0,
+
+            init() {
+                this.shipX = ArcadeCore.canvas.width / 2;
+                this.shots = []; this.swarm = []; this.dir = 1; this.reload = 0;
+                
+                let cols = Math.min(10, 5 + ArcadeCore.level);
+                for(let r=0; r<3; r++) {
+                    for(let c=0; c<cols; c++) {
+                        this.swarm.push({x: c * 40 + 30, y: r * 22 + 60, w: 24, h: 14, alive: true});
+                    }
+                }
+            },
+            update() {
+                if(ArcadeCore.keys[37] && this.shipX > 20) this.shipX -= 5;
+                if(ArcadeCore.keys[39] && this.shipX < ArcadeCore.canvas.width - 20) this.shipX += 5;
+
+                if(this.reload > 0) this.reload--;
+                if(ArcadeCore.keys[32] && this.reload === 0) {
+                    this.shots.push({x: this.shipX, y: ArcadeCore.canvas.height - 30});
+                    this.reload = 14;
+                }
+
+                this.shots.forEach((s, idx) => { s.y -= 6; if(s.y < 40) this.shots.splice(idx, 1); });
+
+                let stepDown = false;
+                let count = 0;
+                this.swarm.forEach(e => {
+                    if(!e.alive) return;
+                    count++;
+                    e.x += this.dir * (1 + ArcadeCore.level * 0.15);
+                    if(e.x < 10 || e.x > ArcadeCore.canvas.width - 35) stepDown = true;
+                    if(e.y > ArcadeCore.canvas.height - 50) { ArcadeCore.shutdown("Invasores romperam a barreira."); return; }
+                });
+
+                if(stepDown) { this.dir = -this.dir; this.swarm.forEach(e => e.y += 12); }
+                if(count === 0) { ArcadeCore.level++; this.init(); }
+
+                this.shots.forEach((s, sIdx) => {
+                    this.swarm.forEach(e => {
+                        if(e.alive && s.x > e.x && s.x < e.x + e.w && s.y > e.y && s.y < e.y + e.h) {
+                            e.alive = false; this.shots.splice(sIdx, 1); ArcadeCore.score += 20;
+                        }
+                    });
+                });
+
+                let ctx = ArcadeCore.ctx;
+                ctx.fillStyle = "#00f2fe"; ctx.beginPath();
+                ctx.moveTo(this.shipX, ArcadeCore.canvas.height-30); ctx.lineTo(this.shipX-12, ArcadeCore.canvas.height-10); ctx.lineTo(this.shipX+12, ArcadeCore.canvas.height-10); ctx.fill();
+                ctx.fillStyle = "#ffdf00"; this.shots.forEach(s => ctx.fillRect(s.x-2, s.y, 4, 10));
+                ctx.fillStyle = "#ff007f"; this.swarm.forEach(e => { if(e.alive) ctx.fillRect(e.x, e.y, e.w, e.h); });
+            }
+        };
+
+        // =====================================================================
+        // JOGO 4: CYBER RUNNER
+        // =====================================================================
+        const RunnerModule = {
+            playerY: 0, gravity: 0.6, velocity: 0, groundY: 0,
+            obstacles: [], spawnTimer: 0, speed: 4,
+
+            init() {
+                this.groundY = ArcadeCore.canvas.height - 40;
+                this.playerY = this.groundY - 25;
+                this.velocity = 0;
+                this.obstacles = [];
+                this.spawnTimer = 0;
+                this.speed = 4 + ArcadeCore.level * 0.5;
+            },
+            update() {
+                // Seta para cima ou barra de espaço pula
+                if ((ArcadeCore.keys[38] || ArcadeCore.keys[32]) && this.playerY === this.groundY - 25) {
+                    this.velocity = -10;
+                }
+
+                this.velocity += this.gravity;
+                this.playerY += this.velocity;
+
+                if (this.playerY > this.groundY - 25) {
+                    this.playerY = this.groundY - 25;
+                    this.velocity = 0;
+                }
+
+                this.spawnTimer++;
+                let rate = Math.max(40, 90 - ArcadeCore.level * 5);
+                if (this.spawnTimer % Math.floor(rate) === 0) {
+                    this.obstacles.push({x: ArcadeCore.canvas.width, w: 15, h: 20 + Math.random()*20});
+                    ArcadeCore.score += 10;
+                }
+
+                this.obstacles.forEach((o, idx) => {
+                    o.x -= this.speed;
+                    if(o.x + o.w < 0) {
+                        this.obstacles.splice(idx, 1);
+                        ArcadeCore.level = Math.floor(ArcadeCore.score / 300) + 1;
+                        this.speed = 4 + ArcadeCore.level * 0.5;
+                    }
+
+                    if (o.x < 55 && o.x + o.w > 30 && this.playerY + 25 > this.groundY - o.h) {
+                        ArcadeCore.shutdown("Você colidiu com um bloco de dados na pista.");
+                    }
+                });
+
+                let ctx = ArcadeCore.ctx;
+                ctx.fillStyle = "#333355"; ctx.fillRect(0, this.groundY, ArcadeCore.canvas.width, 4);
+                ctx.fillStyle = "#00ff87"; ctx.fillRect(30, this.playerY, 25, 25);
+                ctx.fillStyle = "#ff007f"; this.obstacles.forEach(o => ctx.fillRect(o.x, this.groundY - o.h, o.w, o.h));
+            }
+        };
+    </script>
+</body>
+</html>
+console.log(`🐢`)
